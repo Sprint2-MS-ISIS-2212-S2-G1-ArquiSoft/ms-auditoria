@@ -1,0 +1,46 @@
+# Solo para desarrollo local. El despliegue real (docker-compose por nodo EC2)
+# vive en el repositorio paraguas.
+#
+# Auditoria no llama a ningun otro servicio, asi que aqui solo hay el servicio
+# y su propia base.
+services:
+  auditoria:
+    build: .
+    container_name: auditoria
+    restart: unless-stopped
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: auditoria
+      DB_PASSWORD: auditoria
+      DB_NAME: auditoria
+      DB_LOGGING: "false"
+    ports:
+      - "3006:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: auditoria-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: auditoria
+      POSTGRES_USER: auditoria
+      POSTGRES_PASSWORD: auditoria
+    ports:
+      - "5436:5432"
+    volumes:
+      - auditoria_postgres_data:/var/lib/postgresql/data
+      - ./database/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U auditoria -d auditoria"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  auditoria_postgres_data:
